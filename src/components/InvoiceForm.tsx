@@ -9,6 +9,22 @@ interface InvoiceFormProps {
 
 const STORAGE_KEY = 'invoice_form_data_v1';
 
+// Product list
+const PRODUCTS = [
+  'កក់សក់ស្ពៃ',
+  'ដុសខ្លួនស្ពៃ',
+  'ដុសខ្លួនម្នាស់',
+  'ដុសខ្លួនជីរអង្កាម',
+  'ហ្វូមដុសមុខ',
+  'សាប៊ូដុំដុសមុខ',
+  'ក្រែមបន្ទក់សក់',
+  'អប់ស្បែកអង្ករតំណើប',
+  'ទឹកឃ្មុំ+ពោធិ៍សាត់',
+  'លាងចានវីនតូច',
+  'បោកខោអាវ OKA ធំ(៣លីត្រ)',
+  'បោកខោអាវ OKA តូច(១លីត្រ)',
+];
+
 // Helper functions
 const saveToStorage = (data: any) => {
   try {
@@ -212,13 +228,18 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({ onPreview }) => {
                 </div>
 
                 <div className="space-y-2">
-                  <input
-                    type="text"
+                  <select
                     value={item.name}
                     onChange={(e) => updateItem(item.id, 'name', e.target.value)}
-                    placeholder="Product name"
                     className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-                  />
+                  >
+                    <option value="">Select product...</option>
+                    {PRODUCTS.map((product, idx) => (
+                      <option key={idx} value={product}>
+                        {product}
+                      </option>
+                    ))}
+                  </select>
 
                   <div className="grid grid-cols-3 gap-1.5">
                     <div>
