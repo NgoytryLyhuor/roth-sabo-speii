@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { ArrowLeft, Download } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { ArrowLeft, Download, Send } from 'lucide-react';
 import { Invoice } from '../types/invoice';
 import { formatCurrency } from '../utils/formatCurrency';
 import html2canvas from 'html2canvas';
@@ -13,9 +13,10 @@ const STORAGE_KEY = 'invoice_form_data_v1';
 
 export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoice, onBack }) => {
   const invoiceRef = useRef<HTMLDivElement>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleDownload = async () => {
-    if (!invoiceRef.current) return;
+  const generateImage = async () => {
+    if (!invoiceRef.current) return null;
 
     try {
       const canvas = await html2canvas(invoiceRef.current, {
@@ -24,23 +25,88 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoice, onBack 
         logging: false,
       });
 
-      const link = document.createElement('a');
-      const dateStr = invoice.date.replace(/-/g, '');
-      const filename = `Invoice_${invoice.customerName}_${dateStr}.png`;
-
-      link.download = filename;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-
-      // Clear localStorage after successful download
-      localStorage.removeItem(STORAGE_KEY);
-      
-      // Go back to form
-      onBack();
+      return canvas;
     } catch (error) {
-      console.error('Error downloading invoice:', error);
-      alert('Failed to download invoice. Please try again.');
+      console.error('Error generating image:', error);
+      return null;
     }
+  };
+
+  const handleDownload = async () => {
+    setIsProcessing(true);
+    const canvas = await generateImage();
+    setIsProcessing(false);
+
+    if (!canvas) {
+      alert('Failed to generate invoice image. Please try again.');
+      return;
+    }
+
+    const link = document.createElement('a');
+    const dateStr = invoice.date.replace(/-/g, '');
+    const filename = `Invoice_${invoice.customerName}_${dateStr}.png`;
+
+    link.download = filename;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+
+    // Clear localStorage after successful download
+    localStorage.removeItem(STORAGE_KEY);
+    onBack();
+  };
+
+  const handleShareToTelegram = async () => {
+    setIsProcessing(true);
+    const canvas = await generateImage();
+    setIsProcessing(false);
+
+    if (!canvas) {
+      alert('Failed to generate invoice image. Please try again.');
+      return;
+    }
+
+    try {
+      // Convert canvas to blob
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          alert('Failed to create image. Please try again.');
+          return;
+        }
+
+        const file = new File([blob], `Invoice_${invoice.customerName}.png`, { type: 'image/png' });
+
+        // Check if Web Share API is available and supports files
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              files: [file],
+              title: `Invoice - ${invoice.customerName}`,
+              text: `Invoice for ${invoice.customerName}\nTotal: ${formatCurrency(invoice.total, invoice.currency)}`
+            });
+            console.log('✅ Shared successfully via Web Share API');
+          } catch (error) {
+            if (error.name !== 'AbortError') {
+              console.error('Share failed:', error);
+              fallbackToTelegramLink();
+            }
+          }
+        } else {
+          // Fallback: Open Telegram with text (can't share image directly via URL)
+          fallbackToTelegramLink();
+        }
+      }, 'image/png');
+    } catch (error) {
+      console.error('Error sharing to Telegram:', error);
+      alert('Failed to share. Please try downloading and sharing manually.');
+    }
+  };
+
+  const fallbackToTelegramLink = () => {
+    const text = `Invoice for ${invoice.customerName}\nDate: ${invoice.date}\nTotal: ${formatCurrency(invoice.total, invoice.currency)}`;
+    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(text)}`;
+    
+    alert('Opening Telegram... Note: You will need to manually attach the invoice image after downloading it.');
+    window.open(telegramUrl, '_blank');
   };
 
   return (
@@ -49,16 +115,26 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoice, onBack 
         <button
           onClick={onBack}
           className="flex items-center gap-1 px-3 py-2 bg-gray-600 text-white rounded text-sm hover:bg-gray-700"
+          disabled={isProcessing}
         >
           <ArrowLeft size={16} />
           Back
         </button>
         <button
+          onClick={handleShareToTelegram}
+          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 text-white rounded text-sm font-semibold hover:bg-blue-600 disabled:opacity-50"
+          disabled={isProcessing}
+        >
+          <Send size={16} />
+          {isProcessing ? 'Processing...' : 'Share to Telegram'}
+        </button>
+        <button
           onClick={handleDownload}
-          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded text-sm font-semibold hover:bg-green-700"
+          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded text-sm font-semibold hover:bg-green-700 disabled:opacity-50"
+          disabled={isProcessing}
         >
           <Download size={16} />
-          Download as Image
+          Download
         </button>
       </div>
 
