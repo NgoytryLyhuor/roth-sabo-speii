@@ -11,6 +11,30 @@ interface InvoicePreviewProps {
 
 const STORAGE_KEY = 'invoice_form_data_v1';
 
+// Khmer month names
+const khmerMonths = [
+  'មករា',      // January
+  'កុម្ភៈ',     // February
+  'មីនា',      // March
+  'មេសា',      // April
+  'ឧសភា',     // May
+  'មិថុនា',    // June
+  'កក្កដា',    // July
+  'សីហា',      // August
+  'កញ្ញា',     // September
+  'តុលា',      // October
+  'វិច្ឆិកា',  // November
+  'ធ្នូ'       // December
+];
+
+const formatKhmerDate = (dateString: string) => {
+  const date = new Date(dateString);
+  const day = date.getDate();
+  const month = khmerMonths[date.getMonth()];
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
 export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoice, onBack }) => {
   const invoiceRef = useRef<HTMLDivElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -52,6 +76,11 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoice, onBack 
 
     // Clear localStorage after successful download
     localStorage.removeItem(STORAGE_KEY);
+    console.log('🗑️ Data cleared from localStorage after download');
+    
+    alert('Invoice downloaded! Form data has been cleared for next invoice.');
+    
+    // Go back to form
     onBack();
   };
 
@@ -126,7 +155,7 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoice, onBack 
           disabled={isProcessing}
         >
           <Send size={16} />
-          {isProcessing ? 'Processing...' : 'Share to Telegram'}
+          {isProcessing ? 'Processing...' : 'Share'}
         </button>
         <button
           onClick={handleDownload}
@@ -152,7 +181,7 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoice, onBack 
             </div>
             <div>
               <div className="font-semibold text-gray-700 mb-1">Date / ថ្ងៃទី:</div>
-              <div className="text-gray-900">{new Date(invoice.date).toLocaleDateString()}</div>
+              <div className="text-gray-900">{formatKhmerDate(invoice.date)}</div>
             </div>
             <div>
               <div className="font-semibold text-gray-700 mb-1">Seller / អ្នកលក់:</div>
