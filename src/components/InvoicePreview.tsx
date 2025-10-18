@@ -9,6 +9,8 @@ interface InvoicePreviewProps {
   onBack: () => void;
 }
 
+const STORAGE_KEY = 'invoice_form_data_v1';
+
 export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoice, onBack }) => {
   const invoiceRef = useRef<HTMLDivElement>(null);
 
@@ -29,6 +31,12 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoice, onBack 
       link.download = filename;
       link.href = canvas.toDataURL('image/png');
       link.click();
+
+      // Clear localStorage after successful download
+      localStorage.removeItem(STORAGE_KEY);
+      
+      // Go back to form
+      onBack();
     } catch (error) {
       console.error('Error downloading invoice:', error);
       alert('Failed to download invoice. Please try again.');

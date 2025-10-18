@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Invoice, InvoiceItem } from '../types/invoice';
 import { formatCurrency, parseCurrencyInput } from '../utils/formatCurrency';
@@ -7,15 +7,55 @@ interface InvoiceFormProps {
   onPreview: (invoice: Invoice) => void;
 }
 
+const STORAGE_KEY = 'invoice_form_data_v1';
+
+// Helper functions
+const saveToStorage = (data: any) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    console.log('💾 Data saved!', data);
+  } catch (e) {
+    console.error('Save failed:', e);
+  }
+};
+
+const loadFromStorage = () => {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    if (data) {
+      console.log('📂 Data loaded!', JSON.parse(data));
+      return JSON.parse(data);
+    }
+  } catch (e) {
+    console.error('Load failed:', e);
+  }
+  return null;
+};
+
 export const InvoiceForm: React.FC<InvoiceFormProps> = ({ onPreview }) => {
-  const [customerName, setCustomerName] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [currency, setCurrency] = useState<'USD' | 'KHR'>('USD');
-  const [items, setItems] = useState<InvoiceItem[]>([
-    { id: '1', name: '', quantity: 0, unitPrice: 0, amount: 0 }
-  ]);
-  const [discountPercent, setDiscountPercent] = useState(0);
-  const [deliveryFee, setDeliveryFee] = useState(0);
+  // Initialize with saved data or defaults
+  const savedData = loadFromStorage();
+  
+  const [customerName, setCustomerName] = useState(savedData?.customerName || '');
+  const [date, setDate] = useState(savedData?.date || new Date().toISOString().split('T')[0]);
+  const [currency, setCurrency] = useState<'USD' | 'KHR'>(savedData?.currency || 'USD');
+  const [items, setItems] = useState<InvoiceItem[]>(
+    savedData?.items || [{ id: '1', name: '', quantity: 0, unitPrice: 0, amount: 0 }]
+  );
+  const [discountPercent, setDiscountPercent] = useState(savedData?.discountPercent || 0);
+  const [deliveryFee, setDeliveryFee] = useState(savedData?.deliveryFee || 0);
+
+  // Auto-save whenever anything changes
+  useEffect(() => {
+    saveToStorage({
+      customerName,
+      date,
+      currency,
+      items,
+      discountPercent,
+      deliveryFee
+    });
+  }, [customerName, date, currency, items, discountPercent, deliveryFee]);
 
   const addItem = () => {
     const newId = (Math.max(...items.map(i => parseInt(i.id)), 0) + 1).toString();
