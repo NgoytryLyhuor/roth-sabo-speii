@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Trash2, Download, Upload } from 'lucide-react';
+import { Plus, Trash2, Download, Upload, X } from 'lucide-react';
 
 interface MoneyRow {
     id: string;
@@ -19,7 +19,6 @@ const formatUSD = (amount: number): string => {
 };
 
 export const MoneyPage: React.FC<MoneyPageProps> = ({ onDataChange }) => {
-    // Load from localStorage on initial render
     const [totalBuyAmount, setTotalBuyAmount] = useState(() => {
         const saved = localStorage.getItem('totalBuyAmount');
         return saved ? parseFloat(saved) : 0;
@@ -29,15 +28,16 @@ export const MoneyPage: React.FC<MoneyPageProps> = ({ onDataChange }) => {
         const saved = localStorage.getItem('moneyRows');
         return saved ? JSON.parse(saved) : [{ id: '1', amount: 0 }];
     });
+
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [rowToDelete, setRowToDelete] = useState<string | null>(null);
     
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Auto-save totalBuyAmount to localStorage whenever it changes
     useEffect(() => {
         localStorage.setItem('totalBuyAmount', totalBuyAmount.toString());
     }, [totalBuyAmount]);
 
-    // Auto-save rows to localStorage whenever they change
     useEffect(() => {
         localStorage.setItem('moneyRows', JSON.stringify(rows));
     }, [rows]);
@@ -47,10 +47,22 @@ export const MoneyPage: React.FC<MoneyPageProps> = ({ onDataChange }) => {
         setRows([...rows, { id: newId, amount: 0 }]);
     };
 
-    const removeRow = (id: string) => {
-        if (rows.length > 1) {
-            setRows(rows.filter(r => r.id !== id));
+    const confirmDelete = (id: string) => {
+        setRowToDelete(id);
+        setShowDeleteModal(true);
+    };
+
+    const removeRow = () => {
+        if (rowToDelete && rows.length > 1) {
+            setRows(rows.filter(r => r.id !== rowToDelete));
         }
+        setShowDeleteModal(false);
+        setRowToDelete(null);
+    };
+
+    const cancelDelete = () => {
+        setShowDeleteModal(false);
+        setRowToDelete(null);
     };
 
     const updateRow = (id: string, amount: number) => {
@@ -112,7 +124,15 @@ export const MoneyPage: React.FC<MoneyPageProps> = ({ onDataChange }) => {
     const totalInUSD = totalInRiel / 4000;
     const profit = totalInUSD - totalBuyAmount;
 
-    // Notify parent component whenever data changes
+    const getRowInfo = (id: string) => {
+        const index = rows.findIndex(r => r.id === id);
+        const row = rows[index];
+        return {
+            number: index + 1,
+            amount: row?.amount || 0
+        };
+    };
+
     useEffect(() => {
         onDataChange(totalBuyAmount, totalInUSD);
     }, [totalBuyAmount, totalInUSD, onDataChange]);
@@ -188,7 +208,7 @@ export const MoneyPage: React.FC<MoneyPageProps> = ({ onDataChange }) => {
                                 />
                                 {rows.length > 1 && (
                                     <button
-                                        onClick={() => removeRow(row.id)}
+                                        onClick={() => confirmDelete(row.id)}
                                         className="p-1.5 text-red-500 hover:bg-red-50 rounded"
                                     >
                                         <Trash2 size={14} />
@@ -218,6 +238,44 @@ export const MoneyPage: React.FC<MoneyPageProps> = ({ onDataChange }) => {
                     </div>
                 </div>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && rowToDelete && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl max-w-sm w-full">
+                        <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+                            <h3 className="text-base font-bold text-gray-800">Confirm Delete</h3>
+                            <button onClick={cancelDelete} className="text-gray-400 hover:text-gray-600">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="p-4">
+                            <p className="text-sm text-gray-600 mb-2">Are you sure you want to delete:</p>
+                            <div className="bg-gray-50 p-3 rounded border border-gray-200 mb-3">
+                                <p className="text-xs text-gray-500 mb-1">Row #{getRowInfo(rowToDelete).number}</p>
+                                <p className="text-sm font-semibold text-gray-800">
+                                    Amount: {formatRiel(getRowInfo(rowToDelete).amount)}
+                                </p>
+                            </div>
+                            <p className="text-xs text-red-600">This action cannot be undone.</p>
+                        </div>
+                        <div className="p-4 border-t border-gray-200 flex gap-2 justify-end">
+                            <button
+                                onClick={cancelDelete}
+                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={removeRow}
+                                className="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded hover:bg-red-600"
+                            >
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

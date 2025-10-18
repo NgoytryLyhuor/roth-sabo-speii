@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Trash2, Download, Upload } from 'lucide-react';
+import { Plus, Trash2, Download, Upload, X } from 'lucide-react';
 
 interface StockProduct {
     id: string;
@@ -41,9 +41,10 @@ export const StockPage: React.FC<StockPageProps> = ({ totalBuyAmount, totalInUSD
         const saved = localStorage.getItem('stockProducts');
         return saved ? JSON.parse(saved) : [{ id: '1', name: '', price: 0, qty: 0 }];
     });
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [productToDelete, setProductToDelete] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Auto-save to localStorage whenever products change
     useEffect(() => {
         localStorage.setItem('stockProducts', JSON.stringify(products));
     }, [products]);
@@ -53,10 +54,22 @@ export const StockPage: React.FC<StockPageProps> = ({ totalBuyAmount, totalInUSD
         setProducts([...products, { id: newId, name: '', price: 0, qty: 0 }]);
     };
 
-    const removeProduct = (id: string) => {
-        if (products.length > 1) {
-            setProducts(products.filter(p => p.id !== id));
+    const confirmDelete = (id: string) => {
+        setProductToDelete(id);
+        setShowDeleteModal(true);
+    };
+
+    const removeProduct = () => {
+        if (productToDelete && products.length > 1) {
+            setProducts(products.filter(p => p.id !== productToDelete));
         }
+        setShowDeleteModal(false);
+        setProductToDelete(null);
+    };
+
+    const cancelDelete = () => {
+        setShowDeleteModal(false);
+        setProductToDelete(null);
     };
 
     const updateProduct = (id: string, field: keyof StockProduct, value: string | number) => {
@@ -115,6 +128,11 @@ export const StockPage: React.FC<StockPageProps> = ({ totalBuyAmount, totalInUSD
     const totalStockValueUSD = totalStockValueRiel / 4000;
     const totalProfit = (totalStockValueUSD + totalInUSDFromMoney) - totalBuyAmount;
 
+    const getProductName = (id: string) => {
+        const product = products.find(p => p.id === id);
+        return product?.name || 'this product';
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 p-3 pb-20">
             <div className="max-w-2xl mx-auto">
@@ -164,7 +182,7 @@ export const StockPage: React.FC<StockPageProps> = ({ totalBuyAmount, totalInUSD
                                     <span className="text-xs font-medium text-gray-600">#{index + 1}</span>
                                     {products.length > 1 && (
                                         <button
-                                            onClick={() => removeProduct(product.id)}
+                                            onClick={() => confirmDelete(product.id)}
                                             className="text-red-500 hover:text-red-700"
                                         >
                                             <Trash2 size={14} />
@@ -238,6 +256,41 @@ export const StockPage: React.FC<StockPageProps> = ({ totalBuyAmount, totalInUSD
                     </div>
                 </div>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl max-w-sm w-full">
+                        <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+                            <h3 className="text-base font-bold text-gray-800">Confirm Delete</h3>
+                            <button onClick={cancelDelete} className="text-gray-400 hover:text-gray-600">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="p-4">
+                            <p className="text-sm text-gray-600 mb-1">Are you sure you want to delete:</p>
+                            <p className="text-sm font-semibold text-gray-800 mb-3">
+                                {productToDelete ? getProductName(productToDelete) : 'this product'}?
+                            </p>
+                            <p className="text-xs text-red-600">This action cannot be undone.</p>
+                        </div>
+                        <div className="p-4 border-t border-gray-200 flex gap-2 justify-end">
+                            <button
+                                onClick={cancelDelete}
+                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={removeProduct}
+                                className="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded hover:bg-red-600"
+                            >
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
