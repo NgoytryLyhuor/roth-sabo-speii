@@ -78,8 +78,6 @@ export const InvoicePreview: React.FC<InvoicePreviewProps> = ({ invoice, onBack 
     localStorage.removeItem(STORAGE_KEY);
     console.log('🗑️ Data cleared from localStorage after download');
     
-    alert('Invoice downloaded! Form data has been cleared for next invoice.');
-    
     // Go back to form
     onBack();
   };
